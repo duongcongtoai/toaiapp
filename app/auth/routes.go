@@ -1,8 +1,9 @@
 package auth
 
 import (
-	"toaiapp/auth"
+	"fmt"
 	"net/http"
+	"toaiapp/auth"
 
 	"github.com/labstack/echo/v4"
 )
@@ -16,11 +17,14 @@ func apiRegisterRoutes(e *echo.Echo) {
 }
 
 type ResultGet struct {
-	User auth.User
+	Greeting string
 }
 
 func getUser(c echo.Context, u *auth.User) error {
-	return c.JSON(http.StatusOK, ResultGet{*u})
+	if u != auth.Component.UserGuest {
+		return c.JSON(http.StatusOK, ResultGet{fmt.Sprintf("Hello there, %s", u.Name)})
+	}
+	return c.JSON(http.StatusOK, ResultGet{"Hello there guest"})
 	// return nil
 
 }

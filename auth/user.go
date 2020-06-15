@@ -15,6 +15,7 @@ type User struct {
 	Password string
 }
 
+// HasPermission Todo
 func (u *User) HasPermission(_ string) bool {
 	return true
 }
@@ -42,7 +43,6 @@ func (u *User) GenerateToken() (string, error) {
 
 	claims["ID"] = u.ID
 	claims["iat"] = time.Now().Unix()
-	//todo: Config
 	claims["exp"] = time.Now().Add(time.Duration(345600 * time.Second)).Unix()
 	tokenString, err := token.SignedString(SignKey)
 	if err != nil {

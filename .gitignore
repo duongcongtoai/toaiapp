@@ -1,4 +1,2 @@
-*.yaml
 database/*
 tmp/*
-.env

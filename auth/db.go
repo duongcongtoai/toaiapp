@@ -16,3 +16,7 @@ type AuthDB interface {
 	DB() (AuthDB, error)
 	FromContext(echo.Context) (AuthDB, error)
 }
+
+func FromContext(c echo.Context) (AuthDB, error) {
+	return Component.GetDriver().FromContext(c)
+}

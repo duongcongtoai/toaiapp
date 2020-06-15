@@ -35,7 +35,7 @@ func (m *pgDB) SetupEcho(e *echo.Echo) error {
 func (m *pgDB) FindUserByID(id float64) (*auth.User, error) {
 	var user auth.User
 	if m.db.First(&user, uint(id)).RecordNotFound() {
-		return nil, fmt.Errorf("User not found with id %s", id)
+		return nil, fmt.Errorf("User not found with id %f", id)
 	}
 	return &user, nil
 }
@@ -43,7 +43,7 @@ func (m *pgDB) FindUserByID(id float64) (*auth.User, error) {
 func (m *pgDB) FindUserByName(name string) (*auth.User, error) {
 	var user auth.User
 	if m.db.Where(&auth.User{Name: name}).First(&user).RecordNotFound() {
-		return nil, fmt.Errorf("User not found with id %s", name)
+		return nil, fmt.Errorf("User not found with name %s", name)
 	}
 	return &user, nil
 }

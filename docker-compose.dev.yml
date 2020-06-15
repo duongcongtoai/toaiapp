@@ -14,8 +14,8 @@ services:
       - ./.env
     depends_on:
       - "db"
-    links:
-      - db
+    networks:
+      - app_and_db
   db:
     image: postgres:10.1-alpine 
     volumes:
@@ -28,4 +28,8 @@ services:
       - '5433:5432'
     expose:
       - '5432'
-  
+    networks:
+      - app_and_db
+networks:
+  app_and_db:
+    driver: bridge

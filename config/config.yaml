@@ -1,0 +1,8 @@
+auth:
+  debug: true
+  jwt_key_file: rsa.private
+  jwt_pub_key_file: rsa.public
+  jwt_expiration_seconds: 345600
+  auth_db_type: "postgresql"
+  auth_db_url: "host=db port=5432 user=toai dbname=toai_app password=toai sslmode=disable"
+

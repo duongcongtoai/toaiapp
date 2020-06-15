@@ -36,7 +36,7 @@ func (m *mysqlDB) SetupEcho(e *echo.Echo) error {
 func (m *mysqlDB) FindUserByID(id float64) (*auth.User, error) {
 	var user auth.User
 	if m.db.First(&user, id).RecordNotFound() {
-		return nil, fmt.Errorf("User not found with id %s", id)
+		return nil, fmt.Errorf("User not found with id %f", id)
 	}
 	return &user, nil
 }
