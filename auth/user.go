@@ -43,10 +43,11 @@ func (u *User) GenerateToken() (string, error) {
 
 	claims["ID"] = u.ID
 	claims["iat"] = time.Now().Unix()
-	claims["exp"] = time.Now().Add(time.Duration(345600 * time.Second)).Unix()
+	expiredInterval := time.Duration(Component.GetConfig().JWTExpirationSeconds)
+	claims["exp"] = time.Now().Add(time.Duration(expiredInterval * time.Second)).Unix()
 	tokenString, err := token.SignedString(SignKey)
 	if err != nil {
-		return "", fmt.Errorf("Failed to generate JWT token, error was: %v", err)
+		return "", fmt.Errorf("Failed to generate token, error was: %v", err)
 	}
 	return tokenString, nil
 }

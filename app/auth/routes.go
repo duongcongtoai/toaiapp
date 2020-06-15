@@ -25,8 +25,6 @@ func getUser(c echo.Context, u *auth.User) error {
 		return c.JSON(http.StatusOK, ResultGet{fmt.Sprintf("Hello there, %s", u.Name)})
 	}
 	return c.JSON(http.StatusOK, ResultGet{"Hello there guest"})
-	// return nil
-
 }
 
 func postLogin(c echo.Context) error {

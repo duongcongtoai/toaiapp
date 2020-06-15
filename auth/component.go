@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
-	"toaiapp/registry"
 	"path/filepath"
+	"toaiapp/registry"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/labstack/echo/v4"
@@ -36,7 +36,7 @@ type Configuration struct {
 	Debug                bool   `yaml:"debug"`
 	JWTKeyFile           string `yaml:"jwt_key_file"`
 	JWTPubKeyFile        string `yaml:"jwt_pub_key_file"`
-	JWTExpirationSeconds int    `yaml:"jwt_expiration_seconds"`
+	JWTExpirationSeconds int64  `yaml:"jwt_expiration_seconds"`
 	AuthDBType           string `yaml:"auth_db_type"`
 	AuthDBUrl            string `yaml:"auth_db_url"`
 }

@@ -1,13 +1,20 @@
 # DEPLOYMENT
 
-bash build.sh
+```console
+bash build.sh 
+```
+
 Done!
 
 ## Test
 
-docker exec -it ($app_container_id) app --configFile=config/config.yaml auth add $(username) $(password)
+### Create user with command
 
-Test:
+```console
+docker exec -it ($app_container_id) app --configFile=config/config.yaml auth add $(username) $(password)
+```
+
+### Get access token
 
 ```console
 curl --location --request POST 'localhost:8082/api/v1/user/login' \
@@ -15,11 +22,9 @@ curl --location --request POST 'localhost:8082/api/v1/user/login' \
 --form 'password=($password)'
 ```
 
+### Do something with access token
+
 ```console
-curl --location --request POST 'localhost:8082/api/v1/user/login' \
---form 'username=($username)' \
 curl --location --request GET 'localhost:8082/api/v1/user/' \
---header 'Authorization: Bearer ($received_token)' \
---form 'username=toai' \
---form 'password=toai'
+--header 'Authorization: Bearer ($received_token)' 
 ```

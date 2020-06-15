@@ -17,6 +17,7 @@ type AppAuthComponent struct {
 	w int
 }
 
+//SetupEcho register routes
 func (u *AppAuthComponent) SetupEcho(e *echo.Echo) error {
 	apiRegisterRoutes(e)
 	return nil
