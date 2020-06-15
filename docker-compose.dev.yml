@@ -1,0 +1,31 @@
+version: '3.5'
+services:
+  app:
+    build: .
+    command: reflex -c reflex.conf 
+    volumes:
+      - .:/toaiapp
+    working_dir: /toaiapp
+    ports:
+      - '8082:8080'
+    expose:
+      - 8080
+    env_file:
+      - ./.env
+    depends_on:
+      - "db"
+    links:
+      - db
+  db:
+    image: postgres:10.1-alpine 
+    volumes:
+      - ./database/pg:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: 'toai_app'
+      POSTGRES_USER: 'toai'
+      POSTGRES_PASSWORD: 'toai'
+    ports:
+      - '5433:5432'
+    expose:
+      - '5432'
+  
