@@ -15,16 +15,16 @@ services:
     networks:
       - app_and_db
   app:
+    image: toaiapp_img
     build: .
-    command: reflex -c reflex.conf 
     command : ["./wait-for-postgres.sh", "db", "reflex -c reflex.conf"]
     volumes:
       - .:/toaiapp
     working_dir: /toaiapp
     ports:
-      - '8082:8080'
+      - '8082:8082'
     expose:
-      - 8080
+      - 8082
     env_file:
       - ./.env
     depends_on:
@@ -32,6 +32,18 @@ services:
     networks:
       - app_and_db
     restart: always
+  client:
+    image: toaiapp_img
+    command: reflex -c reflex-client.conf
+    volumes:
+      - .:/toaiapp
+    working_dir: /toaiapp
+    ports:
+      - '8084:8084'
+    expose:
+      - 8084
+    depends_on:
+      - app
 networks:
   app_and_db:
     driver: bridge

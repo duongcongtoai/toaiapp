@@ -14,6 +14,7 @@ func apiRegisterRoutes(e *echo.Echo) {
 	gr.POST("/login", postLogin)
 	gr.Use(auth.MiddlewareJWTAuth)
 	gr.GET("/", auth.AuthorizationWrapper(getUser, auth.UserGet))
+	registerOauthRoutes(e)
 }
 
 type ResultGet struct {
