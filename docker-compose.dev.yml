@@ -44,6 +44,8 @@ services:
       - 8084
     depends_on:
       - app
+    networks:
+      - app_and_db
 networks:
   app_and_db:
     driver: bridge

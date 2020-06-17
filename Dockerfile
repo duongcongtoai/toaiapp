@@ -19,4 +19,4 @@ RUN go get github.com/cespare/reflex
 #   else \
 #   reflex -c reflex.conf; \
 #   fi
-# EXPOSE 8080
+EXPOSE 8082

@@ -11,7 +11,6 @@ import (
 	"toaiapp/auth"
 
 	"github.com/go-session/session"
-	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 	"gopkg.in/oauth2.v3/errors"
 	"gopkg.in/oauth2.v3/manage"
@@ -26,7 +25,8 @@ func registerOauthRoutes(e *echo.Echo) {
 
 	manager.MustTokenStorage(store.NewMemoryTokenStore())
 	clientStore := store.NewClientStore()
-	clientStore.Set("client_app", &models.Client{
+	//Hard code client id
+	clientStore.Set("client_app_id", &models.Client{
 		ID:     "client_app_id",
 		Secret: "client_secret",
 		Domain: "http://localhost:8084",
@@ -35,20 +35,20 @@ func registerOauthRoutes(e *echo.Echo) {
 
 	srv := server.NewDefaultServer(manager)
 	srv.SetAllowGetAccessRequest(true)
-	// srv.SetClientInfoHandler(server.ClientFormHandler)
+
 	srv.SetUserAuthorizationHandler(userAuthorizeHandlerFunc(srv, clientStore))
 	manager.SetRefreshTokenCfg(manage.DefaultRefreshTokenCfg)
 	srv.SetInternalErrorHandler(func(err error) (re *errors.Response) {
-		log.Println("Internal Error:", err.Error())
+		log.Printf("Internal Error:%v", err)
 		return
 	})
 
 	srv.SetResponseErrorHandler(func(re *errors.Response) {
-		log.Println("Response Error:", re.Error.Error())
+		log.Printf("Response Error: %v", re.Error)
 	})
 	oauth := e.Group("/oauth")
 
-	oauth.GET("/get_token", tokenFunc(srv))
+	oauth.POST("/get_token", tokenFunc(srv))
 	oauth.GET("/authorize", authorizeFunc(srv))
 	oauth.GET("/login", loginGetFunc())
 	oauth.POST("/login", loginPost)
@@ -117,9 +117,6 @@ func outputHTML(w http.ResponseWriter, r *http.Request, filename string) {
 		http.Error(w, err.Error(), 500)
 		return
 	}
-	// if err != nil {
-
-	// }
 	defer file.Close()
 	fi, _ := file.Stat()
 	http.ServeContent(w, r, file.Name(), fi.ModTime(), file)
@@ -127,19 +124,13 @@ func outputHTML(w http.ResponseWriter, r *http.Request, filename string) {
 
 func authorizeFunc(srv *server.Server) echo.HandlerFunc {
 	httpHandlerFunc := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 		err := srv.HandleAuthorizeRequest(w, r)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		}
 	})
 	return echo.WrapHandler(httpHandlerFunc)
-	// return func(c echo.Context) error {
-	// 	err := srv.HandleAuthorizeRequest(c.Response(), c.Request())
-	// 	if err != nil {
-	// 		return c.HTML(http.StatusNotFound, fmt.Sprintf("Error handling auth request: %v", err))
-	// 	}
-	// 	return nil
-	// }
 }
 
 func tokenFunc(srv *server.Server) echo.HandlerFunc {
@@ -150,29 +141,22 @@ func tokenFunc(srv *server.Server) echo.HandlerFunc {
 		}
 	})
 	return echo.WrapHandler(httpHandlerFunc)
-
-	// return func(c echo.Context) error {
-	// 	err := srv.HandleTokenRequest(c.Response(), c.Request())
-	// 	if err != nil {
-	// 		return c.HTML(http.StatusNotFound, fmt.Sprintf("Error handling auth request: %v", err))
-	// 	}
-	// 	return nil
-	// }
 }
 
-func credentialFunc(clientStore *store.ClientStore) func(echo.Context, *auth.User) error {
-	return func(c echo.Context, user *auth.User) error {
-		clientID := uuid.New().String()[:8]
-		clientSecret := uuid.New().String()[:8]
-		err := clientStore.Set(clientID, &models.Client{
-			ID:     clientID,
-			Secret: clientSecret,
-			Domain: "http://localhost:8082",
-			UserID: strconv.Itoa(int(user.ID)),
-		})
-		if err != nil {
-			fmt.Println(err.Error())
-		}
-		return c.JSON(http.StatusOK, map[string]string{"CLIENT_ID": clientID, "CLIENT_SECRET": clientSecret})
-	}
-}
+// func credentialFunc(clientStore *store.ClientStore) func(echo.Context, *auth.User) error {
+// 	return func(c echo.Context, user *auth.User) error {
+// 		clientID := uuid.New().String()[:8]
+// 		clientSecret := uuid.New().String()[:8]
+// 		err := clientStore.Set(clientID, &models.Client{
+// 			ID:     clientID,
+// 			Secret: clientSecret,
+// 			Domain: "http://localhost:8082",
+// 			UserID: strconv.Itoa(int(user.ID)),
+// 		})
+// 		if err != nil {
+
+// 			fmt.Println(err.Error())
+// 		}
+// 		return c.JSON(http.StatusOK, map[string]string{"CLIENT_ID": clientID, "CLIENT_SECRET": clientSecret})
+// 	}
+// }

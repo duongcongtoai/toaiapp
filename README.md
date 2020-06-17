@@ -11,20 +11,16 @@ Done!
 ### Create user with command
 
 ```console
-docker exec -it ($app_container_id) app --configFile=config/config.yaml auth add $(username) $(password)
+docker exec -it toaiapp_app_1 app --configFile=config/config.yaml auth add $(username) $(password)
 ```
 
-### Get access token
+### Authorize
+Goto: http://localhost:8082/oauth/login
+=> Login with username and password for session
 
-```console
-curl --location --request POST 'localhost:8082/api/v1/user/login' \
---form 'username=($username)' \
---form 'password=($password)'
-```
 
-### Do something with access token
+### Use Oauth2 
 
-```console
-curl --location --request GET 'localhost:8082/api/v1/user/' \
---header 'Authorization: Bearer ($received_token)' 
-```
+Goto: http://localhost:8084
+=>Token is received
+

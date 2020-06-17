@@ -19,7 +19,7 @@ var (
 		RedirectURL:  "http://localhost:8084/oauth2",
 		Endpoint: oauth2.Endpoint{
 			AuthURL:   "http://localhost:8082/oauth/authorize",
-			TokenURL:  "http://localhost:8082/oauth/get_token",
+			TokenURL:  "http://app:8082/oauth/get_token",
 			AuthStyle: oauth2.AuthStyleAutoDetect,
 		},
 	}

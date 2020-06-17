@@ -9,12 +9,13 @@ import (
 )
 
 func apiRegisterRoutes(e *echo.Echo) {
+
+	registerOauthRoutes(e)
 	gr := e.Group("/api/v1/user")
 
 	gr.POST("/login", postLogin)
 	gr.Use(auth.MiddlewareJWTAuth)
 	gr.GET("/", auth.AuthorizationWrapper(getUser, auth.UserGet))
-	registerOauthRoutes(e)
 }
 
 type ResultGet struct {
