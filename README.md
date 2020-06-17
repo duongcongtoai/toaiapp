@@ -24,3 +24,5 @@ Goto: http://localhost:8082/oauth/login
 Goto: http://localhost:8084
 =>Token is received
 
+### Todo:
+Add endpoint to test token
