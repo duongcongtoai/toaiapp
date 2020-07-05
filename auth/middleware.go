@@ -5,28 +5,48 @@ import (
 	"fmt"
 
 	"github.com/dgrijalva/jwt-go"
+
 	"github.com/labstack/echo/v4"
-)
-
-var (
-	//Todo: init this
-
-	MiddlewareJWTAuth = echo.MiddlewareFunc(middlewareJWTAuth(true))
 )
 
 const (
 	bearer = "Bearer"
 )
 
-func middlewareJWTAuth(returnJSON bool) echo.MiddlewareFunc {
+func MiddlewareSessionAuth() echo.MiddlewareFunc {
+	store := GetSessionStore()
+	db := GetDB()
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			session, err := store.Get(c.Request(), "userid")
+			if err != nil {
+				return err
+			}
+			uid := session.Values[useridSessionKey]
+			userID, ok := uid.(float64)
+			if !ok {
+				return fmt.Errorf("Session value of %s is not valid", "userid")
+			}
+			user, err := db.FindUserByID(userID)
+			if err != nil {
+				return err
+			}
+			c.Set(userContextKey, user)
+			return nil
+		}
+	}
+}
+func MiddlewareJWTAuth() echo.MiddlewareFunc {
+	db := GetDB()
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+
 			auth := c.Request().Header.Get(echo.HeaderAuthorization)
 
 			l := len(bearer)
 
 			if len(auth) < l+1 || auth[:l] != bearer {
-				c.Set("user", Component.UserGuest)
+				c.Set(userContextKey, Component.UserGuest)
 				return next(c)
 			}
 
@@ -35,17 +55,12 @@ func middlewareJWTAuth(returnJSON bool) echo.MiddlewareFunc {
 				return err
 			}
 
-			db, err := Component.GetDriver().FromContext(c)
-			if err != nil {
-				return errors.New("Error connecting to db")
-			}
-
 			user, err := db.FindUserByID(tdata.ID)
 
 			if err != nil {
 				return err
 			}
-			c.Set("user", user)
+			c.Set(userContextKey, user)
 			c.Set("claims", tdata)
 			return next(c)
 

@@ -11,5 +11,10 @@ until PGPASSWORD=toai psql -h "$host" -U "toai" "toai_app" -W -c '\l'; do
   sleep 1
 done
 
+until PGPASSWORD=toai psql -h "$host" -U "toai" "client_app" -W -c '\l'; do
+  >&2 echo "Postgres is unavailable - sleeping"
+  sleep 1
+done
+
 >&2 echo "Postgres is up - executing command"
 exec $cmd

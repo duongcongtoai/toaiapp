@@ -10,7 +10,7 @@ import (
 //AuthorizationWrapper provide user parameter in callback function
 func AuthorizationWrapper(callable func(c echo.Context, u *User) error, permission string) func(echo.Context) error {
 	return func(c echo.Context) error {
-		user, ok := c.Get("user").(*User)
+		user, ok := c.Get(userContextKey).(*User)
 		if !ok {
 			return errors.New("No user found in context")
 		}

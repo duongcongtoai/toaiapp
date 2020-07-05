@@ -10,11 +10,9 @@ import (
 
 func apiRegisterRoutes(e *echo.Echo) {
 
-	registerOauthRoutes(e)
 	gr := e.Group("/api/v1/user")
-
 	gr.POST("/login", postLogin)
-	gr.Use(auth.MiddlewareJWTAuth)
+	gr.Use(auth.MiddlewareSessionAuth())
 	gr.GET("/", auth.AuthorizationWrapper(getUser, auth.UserGet))
 }
 
@@ -44,11 +42,8 @@ func postLogin(c echo.Context) error {
 			map[string]string{"message": "Missing information"})
 	}
 
-	db, err := auth.Component.GetDriver().FromContext(c)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError,
-			map[string]string{"message": err.Error()})
-	}
+	db := auth.GetDB()
+
 	user, err := db.FindUserByName(input.Username)
 	if err != nil {
 		return c.JSON(http.StatusNonAuthoritativeInfo,

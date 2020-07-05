@@ -4,5 +4,11 @@ auth:
   jwt_pub_key_file: rsa.public
   jwt_expiration_seconds: 345600
   auth_db_type: "postgresql"
+  session_store_type: "postgresql"
+auth_db_postgres:
   auth_db_url: "host=db port=5432 user=toai dbname=toai_app password=toai sslmode=disable"
+auth_session:
+  db_url: "host=db port=5432 user=toai dbname=toai_app password=toai sslmode=disable"
+  session_key_file: rsa.private
+  session_pub_key_file: rsa.public
 

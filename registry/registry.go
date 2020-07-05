@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/labstack/echo/v4"
@@ -14,7 +15,7 @@ type Component interface {
 	SetupEcho(*echo.Echo) error
 	Shutdown() error
 	GetName() string
-	SetupFromYaml(string, bool) error
+	SetupFromYaml(string) error
 }
 type Registry struct {
 	clist  []Component
@@ -42,14 +43,13 @@ func (r *Registry) SetupEcho(e *echo.Echo) error {
 	return nil
 }
 
-func (r *Registry) SetupFromYaml(configFile string, debug bool) error {
-	r.debug = debug
+func (r *Registry) SetupFromYaml(configFile string) error {
 	for _, c := range r.clist {
 		if r.debug {
 			log.Printf("SetupFromYaml (%d): %s\n", c.GetWeight(), c.GetName())
 		}
-		if err := c.SetupFromYaml(configFile, debug); err != nil {
-			return err
+		if err := c.SetupFromYaml(configFile); err != nil {
+			return fmt.Errorf("From component: %s, error:%v", c.GetName(), err)
 		}
 	}
 	return nil

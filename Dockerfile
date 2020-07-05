@@ -9,9 +9,11 @@ WORKDIR /toaiapp
 RUN apt-get update \
     && apt-get install -y postgresql-client 
 
-RUN go get ./app
+RUN go get ./cmd/app
+RUN go get ./cmd/client
 # RUN go build
 RUN go get github.com/cespare/reflex
+
 
 # CMD if [${APP_ENV} = production]; \
 #   then \
@@ -19,4 +21,4 @@ RUN go get github.com/cespare/reflex
 #   else \
 #   reflex -c reflex.conf; \
 #   fi
-EXPOSE 8082
+# EXPOSE 8082

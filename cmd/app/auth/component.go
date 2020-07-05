@@ -23,7 +23,7 @@ func (u *AppAuthComponent) SetupEcho(e *echo.Echo) error {
 	return nil
 }
 
-func (u *AppAuthComponent) SetupFromYaml(configFile string, debug bool) error {
+func (u *AppAuthComponent) SetupFromYaml(configFile string) error {
 	return nil
 }
 

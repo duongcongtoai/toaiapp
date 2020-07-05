@@ -1,15 +1,14 @@
 package mysql
 
 import (
-	"errors"
 	"fmt"
+	"io/ioutil"
 
 	"toaiapp/auth"
 	pgcom "toaiapp/db/postgresql"
 
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
-	"github.com/labstack/echo/v4"
+	"gopkg.in/yaml.v2"
 )
 
 var (
@@ -18,18 +17,7 @@ var (
 
 type pgDB struct {
 	db     *gorm.DB
-	config auth.Configuration
-}
-
-func (m *pgDB) SetupEcho(e *echo.Echo) error {
-	if auth.Component.GetConfig().AuthDBType == "postgresql" {
-		url := m.config.AuthDBUrl
-		if url == "" {
-			return errors.New("Empty url configuration for component auth")
-		}
-		e.Use(pgcom.PostgresMiddleware(driverName, pgcom.ConnectDB(url)))
-	}
-	return nil
+	config Configuration
 }
 
 func (m *pgDB) FindUserByID(id float64) (*auth.User, error) {
@@ -48,32 +36,35 @@ func (m *pgDB) FindUserByName(name string) (*auth.User, error) {
 	return &user, nil
 }
 
-func (m *pgDB) SetConfig(cfg auth.Configuration) {
-	m.config = cfg
-}
+// func (m *pgDB) SetConfig(config []byte) {
+// 	m.config = cfg
+// }
 
 func (m *pgDB) CreateUser(u *auth.User) error {
 	return m.db.Create(u).Error
 }
 
-func (m *pgDB) DB() (auth.AuthDB, error) {
-
-	url := m.config.AuthDBUrl
-	if url == "" {
-		return nil, errors.New("Empty url configuration for component auth")
-	}
-	db := pgcom.ConnectDB(url)
-	cloned := &pgDB{config: m.config, db: db}
-	return cloned, nil
-}
-func (m *pgDB) FromContext(c echo.Context) (auth.AuthDB, error) {
-	if db, ok := c.Get(driverName).(*gorm.DB); ok {
-		return &pgDB{db: db, config: m.config}, nil
-	}
-	return nil, errors.New("Postgresql Database is not properly configured")
+type Configuration struct {
+	DBURL string `yaml:"auth_db_url"`
 }
 
-func (m *pgDB) Initialize() error {
+func (m *pgDB) SetupFromYamlConfig(configFile string) error {
+	configByte, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		return err
+	}
+	type ConfigContainer struct {
+		Configuration `yaml:"auth_db_postgres"`
+	}
+	var cfgContainer ConfigContainer
+	if err := yaml.Unmarshal(configByte, &cfgContainer); err != nil {
+		return err
+	}
+
+	db := pgcom.ConnectDB(cfgContainer.Configuration.DBURL)
+	m.db = db
+
+	m.config = cfgContainer.Configuration
 	if db := m.db.AutoMigrate(&auth.User{}); db.Error != nil {
 		return db.Error
 	}

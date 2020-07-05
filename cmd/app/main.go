@@ -1,13 +1,15 @@
 package main
 
 import (
+	"fmt"
 	"log"
-	"toaiapp/registry"
 	"os"
+	"toaiapp/registry"
 
-	_ "toaiapp/app/auth"
 	_ "toaiapp/auth"
 	_ "toaiapp/auth/db/postgresql"
+	_ "toaiapp/auth/session/psql"
+	_ "toaiapp/cmd/app/oauth2server"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -49,6 +51,18 @@ func serve(cmd *cobra.Command, args []string) {
 		log.Fatalf("ERROR: %v", err)
 	}
 
+}
+func commandWrapper(callable func(*cobra.Command, []string)) func(*cobra.Command, []string) {
+	return func(c *cobra.Command, args []string) {
+		fmt.Printf("Debug mode: %t\n", debug)
+		fmt.Printf("From config file: %s\n", configFile)
+		fmt.Printf("On port: %s\n", listen)
+		if err := registry.Instance().SetupFromYaml(configFile); err != nil {
+			fmt.Println("-------------------------------")
+			log.Fatalf("Error :%v", err)
+		}
+		callable(c, args)
+	}
 }
 
 func init() {

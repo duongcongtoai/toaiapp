@@ -9,6 +9,9 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var userContextKey = "auth_user_key"
+var useridSessionKey = struct{}{}
+
 type User struct {
 	gorm.Model
 	Name     string

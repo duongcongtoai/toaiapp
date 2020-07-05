@@ -1,4 +1,4 @@
-package auth
+package oauth2server
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	stderr "errors"
 	"toaiapp/auth"
 
-	"github.com/go-session/session"
+	"github.com/gorilla/sessions"
 	"github.com/labstack/echo/v4"
 	"gopkg.in/oauth2.v3/errors"
 	"gopkg.in/oauth2.v3/manage"
@@ -19,7 +19,7 @@ import (
 	"gopkg.in/oauth2.v3/store"
 )
 
-func registerOauthRoutes(e *echo.Echo) {
+func registerRoutes(e *echo.Echo) {
 	manager := manage.NewDefaultManager()
 	manager.SetAuthorizeCodeTokenCfg(manage.DefaultAuthorizeCodeTokenCfg)
 
@@ -36,7 +36,8 @@ func registerOauthRoutes(e *echo.Echo) {
 	srv := server.NewDefaultServer(manager)
 	srv.SetAllowGetAccessRequest(true)
 
-	srv.SetUserAuthorizationHandler(userAuthorizeHandlerFunc(srv, clientStore))
+	sessionStore := auth.GetSessionStore()
+	srv.SetUserAuthorizationHandler(userAuthorizeHandlerFunc(srv, sessionStore))
 	manager.SetRefreshTokenCfg(manage.DefaultRefreshTokenCfg)
 	srv.SetInternalErrorHandler(func(err error) (re *errors.Response) {
 		log.Printf("Internal Error:%v", err)
@@ -51,56 +52,71 @@ func registerOauthRoutes(e *echo.Echo) {
 	oauth.POST("/get_token", tokenFunc(srv))
 	oauth.GET("/authorize", authorizeFunc(srv))
 	oauth.GET("/login", loginGetFunc())
-	oauth.POST("/login", loginPost)
+	oauth.POST("/login", loginPostFunc(sessionStore))
 }
 
-func loginPost(c echo.Context) error {
+var (
+	appOauth2ServerCookie = "appOauth2ServerCookie"
+)
 
-	store, err := session.Start(nil, c.Response(), c.Request())
+func loginPostFunc(store sessions.Store) echo.HandlerFunc {
+	return func(c echo.Context) error {
 
-	type userData = struct {
-		Username string `form:"username"`
-		Password string `form:"password"`
-	}
+		// store, err := session.Start(nil, c.Response(), c.Request())
 
-	input := &userData{}
-	if err := c.Bind(input); err != nil {
-		return c.HTML(http.StatusBadRequest, "invalid input")
-	}
-	if input.Username == "" || input.Password == "" {
+		type userData = struct {
+			Username string `form:"username"`
+			Password string `form:"password"`
+		}
 
-		return c.HTML(http.StatusBadRequest, "missing information")
-	}
+		input := &userData{}
+		if err := c.Bind(input); err != nil {
+			return c.HTML(http.StatusBadRequest, "invalid input")
+		}
+		if input.Username == "" || input.Password == "" {
 
-	db, err := auth.Component.GetDriver().FromContext(c)
-	if err != nil {
+			return c.HTML(http.StatusBadRequest, "missing information")
+		}
 
-		return c.HTML(http.StatusBadRequest, fmt.Sprintf("%v\n", err.Error()))
+		db := auth.GetDB()
+
+		user, err := db.FindUserByName(input.Username)
+		if err != nil {
+			return c.HTML(http.StatusBadRequest, fmt.Sprintf("%v\n", err.Error()))
+		}
+		if err = user.Authenticate(input.Password); err != nil {
+			return c.HTML(http.StatusBadRequest, "wrong username or password")
+		}
+		session, err := store.Get(c.Request(), appOauth2ServerCookie)
+		if err != nil {
+			return err
+		}
+		session.Values["user"] = *user
+		err = session.Save(c.Request(), c.Response())
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+		// store.Set("userid", strconv.Itoa(int(user.ID)))
+		// store.Save()
+		return c.HTML(http.StatusFound, fmt.Sprintf("Session is ready, try oauth2! for user %s", user.Name))
 	}
-	user, err := db.FindUserByName(input.Username)
-	if err != nil {
-		return c.HTML(http.StatusBadRequest, fmt.Sprintf("%v\n", err.Error()))
-	}
-	if err = user.Authenticate(input.Password); err != nil {
-		return c.HTML(http.StatusBadRequest, "wrong username or password")
-	}
-	store.Set("userid", strconv.Itoa(int(user.ID)))
-	store.Save()
-	return c.HTML(http.StatusFound, fmt.Sprintf("Session is ready, try oauth2! for user %s", user.Name))
 }
 
-func userAuthorizeHandlerFunc(server *server.Server, store *store.ClientStore) server.UserAuthorizationHandler {
+func userAuthorizeHandlerFunc(server *server.Server, store sessions.Store) server.UserAuthorizationHandler {
 	return func(w http.ResponseWriter, r *http.Request) (userID string, err error) {
-		store, err := session.Start(nil, w, r)
+		session, err := store.Get(r, appOauth2ServerCookie)
 		if err != nil {
 			return "", err
 		}
-		uid, ok := store.Get("userid")
+		user, ok := session.Values["user"].(auth.User)
+		// uid, ok := store.Get("userid")
 		if !ok {
 			return "", stderr.New("No session found")
 		}
-		store.Save()
-		return uid.(string), nil
+		return strconv.Itoa(int(user.ID)), nil
+		// store.Save()
+		// return uid.(string), nil
 	}
 }
 
@@ -115,6 +131,7 @@ func outputHTML(w http.ResponseWriter, r *http.Request, filename string) {
 	file, err := os.Open(filename)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
+
 		return
 	}
 	defer file.Close()

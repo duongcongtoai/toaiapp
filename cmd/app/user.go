@@ -28,11 +28,8 @@ var addUserCommand = &cobra.Command{
 			Name: args[0],
 		}
 		user.SetPassword(args[1])
-		db, err := auth.Component.GetDriver().DB()
-		if err != nil {
-			fmt.Printf("Error: Error getting db: %v", err)
-			os.Exit(1)
-		}
+		db := auth.GetDB()
+
 		if err := db.CreateUser(user); err != nil {
 
 			fmt.Printf("Error: Error creating user: %v", err)

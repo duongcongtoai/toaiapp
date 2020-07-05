@@ -1,13 +1,14 @@
 version: '3.5'
 services:
   db:
-    image: postgres:10.1-alpine 
+    image: postgres:10.1-alpine
     volumes:
-      - ./database/pg:/var/lib/postgresql/data
+      - ./postgresql/data:/var/lib/postgresql/data
+      - ./postgresql/initd:/docker-entrypoint-initdb.d
     environment:
-      POSTGRES_DB: 'toai_app'
-      POSTGRES_USER: 'toai'
-      POSTGRES_PASSWORD: 'toai'
+      - POSTGRES_MULTIPLE_DATABASES=toai_app,client_app
+      - POSTGRES_USER=toai
+      - POSTGRES_PASSWORD=toai
     ports:
       - '5433:5432'
     expose:
@@ -31,7 +32,6 @@ services:
       - db
     networks:
       - app_and_db
-    restart: always
   client:
     image: toaiapp_img
     command: reflex -c reflex-client.conf
@@ -43,7 +43,7 @@ services:
     expose:
       - 8084
     depends_on:
-      - app
+      - db
     networks:
       - app_and_db
 networks:

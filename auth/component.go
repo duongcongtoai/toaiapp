@@ -25,11 +25,13 @@ var (
 )
 
 type AuthComponent struct {
-	r         *registry.Registry
-	UserGuest *User
-	drivers   map[string]AuthDB
-	driver    AuthDB
-	config    *Configuration
+	r             *registry.Registry
+	UserGuest     *User
+	drivers       map[string]DB
+	driver        DB
+	sessionStore  SessionStore
+	sessionStores map[string]SessionStore
+	config        Configuration
 }
 
 type Configuration struct {
@@ -37,11 +39,11 @@ type Configuration struct {
 	JWTKeyFile           string `yaml:"jwt_key_file"`
 	JWTPubKeyFile        string `yaml:"jwt_pub_key_file"`
 	JWTExpirationSeconds int64  `yaml:"jwt_expiration_seconds"`
-	AuthDBType           string `yaml:"auth_db_type"`
-	AuthDBUrl            string `yaml:"auth_db_url"`
+	DBType               string `yaml:"auth_db_type"`
+	SessionStoreType     string `yaml:"session_store_type"`
 }
 
-func (c *AuthComponent) SetupFromYaml(configFile string, debug bool) error {
+func (c *AuthComponent) SetupFromYaml(configFile string) error {
 	type YamlContainer struct {
 		Configuration `yaml:"auth"`
 	}
@@ -56,21 +58,42 @@ func (c *AuthComponent) SetupFromYaml(configFile string, debug bool) error {
 		return fmt.Errorf("Failed to parse section '%s': %v", ComponentName, err)
 	}
 
-	return c.SetupStruct(&conf.Configuration, configFile, debug)
-}
+	c.config = conf.Configuration
 
-func (c *AuthComponent) SetupStruct(cfg *Configuration, configFile string, debug bool) error {
-	c.config = cfg
-	c.config.Debug = debug
-	var (
-		driver AuthDB
-		ok     bool
-	)
-
-	if driver, ok = c.drivers[c.config.AuthDBType]; !ok {
-		log.Fatalf("Unknown db backend '%s' for auth", c.config.AuthDBType)
+	if err := c.setupDB(configFile); err != nil {
+		return err
 	}
 
+	if err := c.setupJwt(configFile); err != nil {
+		return err
+	}
+
+	if err := c.setupSessionStore(configFile); err != nil {
+		return err
+	}
+
+	return nil
+
+}
+
+func (c *AuthComponent) setupDB(configFile string) error {
+	dbType := c.config.DBType
+	driver, ok := c.drivers[dbType]
+	if !ok {
+		log.Fatalf("Unknown db backend '%s' for auth", dbType)
+	}
+
+	c.driver = driver
+	if err := c.driver.SetupFromYamlConfig(configFile); err != nil {
+		log.Fatalf("%v\n", err)
+	}
+	// if err := c.driver.Initialize(); err != nil {
+	// 	log.Fatalf("%v\n", err)
+	// }
+	return nil
+}
+
+func (c *AuthComponent) setupJwt(configFile string) error {
 	if !filepath.IsAbs(c.config.JWTKeyFile) {
 		c.config.JWTKeyFile = filepath.Join(filepath.Dir(configFile), c.config.JWTKeyFile)
 	}
@@ -93,35 +116,48 @@ func (c *AuthComponent) SetupStruct(cfg *Configuration, configFile string, debug
 	}
 	PubKey, err = jwt.ParseRSAPublicKeyFromPEM(pubBytes)
 	if err != nil {
-		fmt.Println(err)
 		log.Fatalf("Error: Cannot parse public keyfile %v", c.config.JWTPubKeyFile)
 	}
+	return nil
+}
 
-	c.driver = driver
-	c.driver.SetConfig(*c.config)
-	db, err := driver.DB()
-	if err != nil {
-		log.Fatalf("%v\n", err)
+func (c *AuthComponent) setupSessionStore(configFile string) error {
+	if c.config.SessionStoreType == "" {
+		return nil
 	}
-	if err = db.Initialize(); err != nil {
+	storeType := c.config.SessionStoreType
+	store, ok := c.sessionStores[storeType]
+	if !ok {
+		log.Fatalf("Unknown session store '%s' for auth", storeType)
+	}
+
+	c.sessionStore = store
+	if err := c.sessionStore.SetupFromYamlConfig(configFile); err != nil {
+
 		log.Fatalf("%v\n", err)
 	}
 	return nil
 }
-func (c *AuthComponent) GetConfig() *Configuration {
+
+func (c *AuthComponent) GetConfig() Configuration {
 	return c.config
 }
 
-func (c *AuthComponent) RegisterDB(dbName string, db AuthDB) {
+func (c *AuthComponent) RegisterDB(dbName string, db DB) {
 	c.drivers[dbName] = db
 }
 
-func (c *AuthComponent) GetDriver() AuthDB {
-	return c.driver
+func (c *AuthComponent) RegisterSessionStore(storeName string, store SessionStore) {
+	c.sessionStores[storeName] = store
 }
 
+// func (c *AuthComponent) GetDriver() DB {
+// 	return c.driver
+// }
+
 func (c *AuthComponent) SetupEcho(e *echo.Echo) error {
-	return c.driver.SetupEcho(e)
+	return nil
+	// return c.driver.SetupEcho(e)
 }
 
 func (c *AuthComponent) GetWeight() int {
@@ -141,6 +177,6 @@ func (c *AuthComponent) GetName() string {
 }
 
 func init() {
-	Component = &AuthComponent{drivers: make(map[string]AuthDB)}
+	Component = &AuthComponent{drivers: make(map[string]DB), sessionStores: make(map[string]SessionStore)}
 	registry.Instance().Register(ComponentName, Component)
 }
