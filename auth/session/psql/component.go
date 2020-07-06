@@ -2,7 +2,11 @@ package psql
 
 import (
 	"encoding/gob"
+	"fmt"
 	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
 	"toaiapp/auth"
 
 	"github.com/antonlindstrom/pgstore"
@@ -17,13 +21,35 @@ type PGresSessionStore struct {
 }
 
 type Configuration struct {
-	DBURL      string `yaml:"db_url"`
-	KeyFile    string `yaml:"session_key_file"`
-	PubKeyFile string `yaml:"session_pub_key_file"`
+	DBURL        string `yaml:"db_url"`
+	HashKeyFile  string `yaml:"session_hash_key_file"`
+	BlockKeyFile string `yaml:"session_block_key_file"`
 }
 
 func (p *PGresSessionStore) Store() sessions.Store {
 	return p.store
+}
+
+func (p *PGresSessionStore) prepareKeyPairs(configFile string) error {
+	if !filepath.IsAbs(p.config.HashKeyFile) {
+		p.config.HashKeyFile = filepath.Join(filepath.Dir(configFile), p.config.HashKeyFile)
+	}
+	if _, err := os.Stat(p.config.HashKeyFile); os.IsNotExist(err) {
+		hashKeyByte := securecookie.GenerateRandomKey(16)
+		if err := ioutil.WriteFile(p.config.HashKeyFile, hashKeyByte, 0644); err != nil {
+			return fmt.Errorf("Error writing hash key file %s", p.config.HashKeyFile)
+		}
+	}
+	if !filepath.IsAbs(p.config.BlockKeyFile) {
+		p.config.BlockKeyFile = filepath.Join(filepath.Dir(configFile), p.config.BlockKeyFile)
+	}
+	if _, err := os.Stat(p.config.BlockKeyFile); os.IsNotExist(err) {
+		blockKeyByte := securecookie.GenerateRandomKey(16)
+		if err := ioutil.WriteFile(p.config.BlockKeyFile, blockKeyByte, 0644); err != nil {
+			return fmt.Errorf("Error writing hash key file %s", p.config.BlockKeyFile)
+		}
+	}
+	return nil
 }
 
 func (p *PGresSessionStore) SetupFromYamlConfig(configFile string) error {
@@ -39,31 +65,18 @@ func (p *PGresSessionStore) SetupFromYamlConfig(configFile string) error {
 		return err
 	}
 	p.config = cfgContainer.Configuration
-	// if !filepath.IsAbs(p.config.KeyFile) {
-	// 	p.config.KeyFile = filepath.Join(filepath.Dir(configFile), p.config.KeyFile)
-	// }
-
-	// if !filepath.IsAbs(p.config.PubKeyFile) {
-	// 	p.config.PubKeyFile = filepath.Join(filepath.Dir(configFile), p.config.PubKeyFile)
-	// }
-	// signBytes, err := ioutil.ReadFile(p.config.KeyFile)
-	// if err != nil {
-	// 	log.Fatalf("Error: Cannot read private keyfile %v", p.config.KeyFile)
-	// }
-	// // SignKey, err = jwt.ParseRSAPrivateKeyFromPEM(signBytes)
-	// // if err != nil {
-	// // 	log.Fatalf("Error parsing private key file: %v", p.config.KeyFile)
-	// // }
-
-	// pubBytes, err := ioutil.ReadFile(p.config.PubKeyFile)
-	// if err != nil {
-	// 	log.Fatalf("Error: Cannot read public keyfile %v", p.config.PubKeyFile)
-	// }
-	// PubKey, err = jwt.ParseRSAPublicKeyFromPEM(pubBytes)
-	// if err != nil {
-	// 	log.Fatalf("Error: Cannot parse public keyfile %v", p.config.PubKeyFile)
-	// }
-	store, err := pgstore.NewPGStore(p.config.DBURL, securecookie.GenerateRandomKey(16), securecookie.GenerateRandomKey(16))
+	if err := p.prepareKeyPairs(configFile); err != nil {
+		return err
+	}
+	hashByte, err := ioutil.ReadFile(p.config.HashKeyFile)
+	if err != nil {
+		log.Fatalf("Cannot read hash key file %s", p.config.HashKeyFile)
+	}
+	blockByte, err := ioutil.ReadFile(p.config.BlockKeyFile)
+	if err != nil {
+		log.Fatalf("Cannot read block key file %s", p.config.BlockKeyFile)
+	}
+	store, err := pgstore.NewPGStore(p.config.DBURL, hashByte, blockByte)
 	if err != nil {
 		return err
 	}
@@ -71,32 +84,6 @@ func (p *PGresSessionStore) SetupFromYamlConfig(configFile string) error {
 	gob.Register(auth.User{})
 	return nil
 }
-
-// func toByteSlice(in []string) [][]byte {
-// 	out := make([][]byte, len(in))
-// 	for i := range in {
-// 		out[i] = []byte(in[i])
-// 	}
-// 	return out
-// }
-
-// func (p *PGresSessionStore) SetupEcho(e *echo.Echo) error {
-// 	return nil
-// 	// e.Use(psqlSessionMiddlewareFunc(p.config.))
-// }
-// func (p *PGresSessionStore) SetConfig(c auth.Configuration) {
-
-// }
-// func (p *PGresSessionStore) Initialize() error {
-
-// }
-// func (p *PGresSessionStore) Store() (sessions.Store, error) {
-
-// }
-
-// func (p *PGresSessionStore) StoreFromContext(c echo.Context) (sessions.Store, error) {
-
-// }
 
 func init() {
 	auth.Component.RegisterSessionStore("postgresql", &PGresSessionStore{})
